@@ -1,0 +1,14 @@
+# Default values for webfrontend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: KubernetesTestHelm.azurecr.io/test-app-gendeng
+  pullPolicy: IfNotPresent
+...
+service:
+  type: LoadBalancer
+  port: 80
+...
