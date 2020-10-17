@@ -1,0 +1,63 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    
+    - uses: actions/checkout@master
+    
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Create ACR
+      id: create-acr
+      run: |
+        az acr create -n testappgendengACR -g testappgendengACRb985-rg --location "Southeast Asia" --sku Basic --admin-enabled
+        echo "::set-output name=acr_username::`az acr credential show -n testappgendengACR --query username | xargs`"
+        echo "::set-output name=acr_password::`az acr credential show -n testappgendengACR --query passwords[0].value | xargs`"
+        echo "::add-mask::`az acr credential show -n testappgendengACR --query passwords[0].value | xargs`"
+
+    - uses: azure/docker-login@v1
+      with:
+        login-server: testappgendengacr.azurecr.io
+        username: ${{ steps.create-acr.outputs.acr_username }}
+        password: ${{ steps.create-acr.outputs.acr_password }}
+
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/" -f  "Dockerfile" -t testappgendengacr.azurecr.io/kubernetestest:${{ github.sha }}
+        docker push testappgendengacr.azurecr.io/kubernetestest:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      id: login
+      with:
+         kubeconfig: ${{ secrets.aks_kubernetestest_kubeConfig }}
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep test-app-gendeng | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace test-app-gendeng`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: test-app-gendeng
+        container-registry-url: testappgendengacr.azurecr.io
+        container-registry-username: ${{ steps.create-acr.outputs.acr_username }}
+        container-registry-password: ${{ steps.create-acr.outputs.acr_password }}
+        secret-name: kubernetestedockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: test-app-gendeng
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+        images: |
+          testappgendengacr.azurecr.io/kubernetestest:${{ github.sha }}
+        imagepullsecrets: |
+          kubernetestedockerauth
