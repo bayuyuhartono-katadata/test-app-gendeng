@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: KubernetesTestHelm.azurecr.io/test-app-gendeng
+  repository: kubernetestesthelm.azurecr.io/test-app-gendeng
   pullPolicy: IfNotPresent
 ...
 service:
