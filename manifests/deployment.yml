@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "kubernetestest-7a0f"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "kubernetestest-7a0f"
+  template:
+    metadata:
+      labels:
+        app: "kubernetestest-7a0f"
+    spec:
+      containers:
+        - name: "kubernetestest-7a0f"
+          image: "testappgendengacr.azurecr.io/kubernetestest"
+          ports:
+          - containerPort: 80
